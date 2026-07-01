@@ -64,6 +64,20 @@ Enable `Notify when jobs finish` in the popup to allow desktop notifications whe
 
 The service processes jobs sequentially, so multiple submitted jobs do not start multiple ffmpeg transcodes at once.
 
+## YouTube Batch Mode
+
+Batch mode is off by default. Enable `Batch mode on YouTube` in the popup when you want the thumbnail checkmark selector on YouTube pages.
+
+When Batch mode is on:
+
+1. Hover over a YouTube video thumbnail until the checkmark appears.
+2. Click the checkmark to enter selection mode.
+3. Click additional videos to add or remove them.
+4. Set one destination folder in the queue panel.
+5. Click `Send queue`.
+
+Turn Batch mode off in the popup to remove the checkmark behavior from YouTube pages.
+
 ## Output Naming
 
 For each job, the service writes into the selected destination folder:

@@ -5,6 +5,7 @@ const urlInput = document.getElementById("urlInput");
 const urlHint = document.getElementById("urlHint");
 const outputInput = document.getElementById("outputInput");
 const notifyInput = document.getElementById("notifyInput");
+const batchInput = document.getElementById("batchInput");
 const submitButton = document.getElementById("submitButton");
 const jobList = document.getElementById("jobList");
 const message = document.getElementById("message");
@@ -88,6 +89,15 @@ function isGooglePageUrl(rawUrl) {
   try {
     const host = new URL(rawUrl).hostname.toLowerCase();
     return host === "google.com" || host.endsWith(".google.com");
+  } catch {
+    return false;
+  }
+}
+
+function isYouTubePageUrl(rawUrl) {
+  try {
+    const host = new URL(rawUrl).hostname.replace(/^www\./, "").toLowerCase();
+    return host === "youtube.com" || host === "m.youtube.com";
   } catch {
     return false;
   }
@@ -195,11 +205,12 @@ async function loadCurrentTab() {
 }
 
 async function loadSavedSettings() {
-  const saved = await chrome.storage.local.get(["outputDir", "notifyOnComplete"]);
+  const saved = await chrome.storage.local.get(["outputDir", "notifyOnComplete", "batchMode"]);
   if (saved.outputDir) {
     outputInput.value = saved.outputDir;
   }
   notifyInput.checked = Boolean(saved.notifyOnComplete);
+  batchInput.checked = Boolean(saved.batchMode);
 }
 
 async function setNotificationPreference(enabled) {
@@ -221,6 +232,33 @@ async function setNotificationPreference(enabled) {
 
   if (!granted) {
     setMessage("Notifications were not enabled.", true);
+  }
+}
+
+async function ensureBatchScriptInCurrentTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id || !isYouTubePageUrl(tab.url || "")) return;
+
+  await chrome.scripting.insertCSS({
+    target: { tabId: tab.id },
+    files: ["youtube-select.css"]
+  });
+  await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    files: ["youtube-select.js"]
+  });
+}
+
+async function setBatchMode(enabled) {
+  await chrome.storage.local.set({ batchMode: enabled });
+  batchInput.checked = enabled;
+
+  if (enabled) {
+    try {
+      await ensureBatchScriptInCurrentTab();
+    } catch {
+      setMessage("Batch mode is saved. Reload the YouTube tab if checkmarks do not appear.");
+    }
   }
 }
 
@@ -390,6 +428,12 @@ notifyInput.addEventListener("change", () => {
   setNotificationPreference(notifyInput.checked).catch((error) => {
     setMessage(error.message, true);
     notifyInput.checked = false;
+  });
+});
+batchInput.addEventListener("change", () => {
+  setBatchMode(batchInput.checked).catch((error) => {
+    setMessage(error.message, true);
+    batchInput.checked = false;
   });
 });
 
