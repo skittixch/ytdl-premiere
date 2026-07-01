@@ -232,6 +232,25 @@
     scheduleHover(anchor);
   }
 
+  function containsNode(container, node) {
+    return node instanceof Node && Boolean(container?.contains(node));
+  }
+
+  function onDocumentPointerLeave(event) {
+    if (!hoverButton || !hoverTarget?.element) return;
+
+    const leftHoverSurface =
+      containsNode(hoverButton, event.target) || containsNode(hoverTarget.element, event.target);
+    if (!leftHoverSurface) return;
+
+    const enteredHoverSurface =
+      containsNode(hoverButton, event.relatedTarget) ||
+      containsNode(hoverTarget.element, event.relatedTarget);
+    if (enteredHoverSurface) return;
+
+    removeHoverButton();
+  }
+
   function toggleVideo(anchor) {
     const url = normalizeYouTubeUrl(anchor.href);
     if (!url) return;
@@ -539,7 +558,7 @@
     scheduleSelectionBadgeRefresh();
   });
   document.addEventListener("pointermove", onPointerMove, true);
-  document.addEventListener("pointerleave", removeHoverButton, true);
+  document.addEventListener("pointerleave", onDocumentPointerLeave, true);
   document.addEventListener("click", onDocumentClick, true);
 
   window.__ytdlPremiereBatchSelector = {
