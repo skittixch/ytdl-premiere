@@ -1,5 +1,6 @@
 import json
 import os
+import queue
 import re
 import shutil
 import subprocess
@@ -26,6 +27,7 @@ TARGET_FPS = os.environ.get("TARGET_FPS", "").strip()
 MEDIA_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm", ".m4v"}
 JOBS: dict[str, dict] = {}
 JOBS_LOCK = threading.Lock()
+JOB_QUEUE: queue.Queue[str] = queue.Queue()
 
 
 class CreateJobRequest(BaseModel):
@@ -54,6 +56,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def start_worker() -> None:
+    threading.Thread(target=worker_loop, daemon=True).start()
 
 
 def now_iso() -> str:
@@ -311,6 +318,15 @@ def process_job(job_id: str) -> None:
         shutil.rmtree(job_dir, ignore_errors=True)
 
 
+def worker_loop() -> None:
+    while True:
+        job_id = JOB_QUEUE.get()
+        try:
+            process_job(job_id)
+        finally:
+            JOB_QUEUE.task_done()
+
+
 @app.get("/health")
 def health() -> dict:
     return {
@@ -321,6 +337,7 @@ def health() -> dict:
         "target_fps": TARGET_FPS or None,
         "crf": CRF,
         "preset": PRESET,
+        "queued_jobs": JOB_QUEUE.qsize(),
     }
 
 
@@ -345,8 +362,7 @@ def create_job(request: CreateJobRequest) -> JobResponse:
     with JOBS_LOCK:
         JOBS[job_id] = job
 
-    thread = threading.Thread(target=process_job, args=(job_id,), daemon=True)
-    thread.start()
+    JOB_QUEUE.put(job_id)
 
     return JobResponse(**job)
 

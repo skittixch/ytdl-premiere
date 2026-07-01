@@ -1,0 +1,143 @@
+.ytdp-hover-check {
+  position: fixed;
+  z-index: 2147483647;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #0b57d0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  font: 700 18px/34px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: center;
+  cursor: pointer;
+}
+
+.ytdp-hover-check:hover {
+  background: #0842a0;
+}
+
+.ytdp-selection-mode {
+  cursor: crosshair;
+}
+
+.ytdp-selected-video {
+  outline: 4px solid #0b57d0 !important;
+  outline-offset: 3px !important;
+  border-radius: 8px !important;
+}
+
+.ytdp-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2147483647;
+  width: 360px;
+  max-width: calc(100vw - 36px);
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2328;
+  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.28);
+  font: 13px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.ytdp-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px 8px;
+}
+
+.ytdp-panel strong {
+  font-size: 14px;
+}
+
+.ytdp-close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: #f6f8fa;
+  color: #57606a;
+  font-size: 18px;
+  line-height: 26px;
+  cursor: pointer;
+}
+
+.ytdp-panel label {
+  display: block;
+  padding: 0 12px;
+  font-weight: 650;
+}
+
+.ytdp-output {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 8px;
+  color: #1f2328;
+  background: #ffffff;
+  font: inherit;
+}
+
+.ytdp-count {
+  padding: 10px 12px 4px;
+  color: #57606a;
+}
+
+.ytdp-list {
+  margin: 0;
+  padding: 0 12px 0 30px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.ytdp-list li {
+  margin: 5px 0;
+  color: #24292f;
+}
+
+.ytdp-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+}
+
+.ytdp-actions button {
+  flex: 1;
+  border: 0;
+  border-radius: 6px;
+  padding: 9px 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.ytdp-send {
+  color: #ffffff;
+  background: #0969da;
+}
+
+.ytdp-send:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ytdp-cancel {
+  color: #24292f;
+  background: #f6f8fa;
+}
+
+.ytdp-message {
+  min-height: 18px;
+  margin: 0;
+  padding: 0 12px 12px;
+  color: #57606a;
+}
+
+.ytdp-message.error {
+  color: #cf222e;
+}

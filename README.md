@@ -54,6 +54,18 @@ Click the extension on a video page, then click `Download + Transcode`.
 
 Set `Destination folder` in the popup to the project folder where the source and Premiere copy should land. The extension remembers the last value.
 
+## YouTube Multi-Select
+
+On YouTube pages:
+
+1. Hover over a video thumbnail long enough for the checkmark to appear.
+2. Click the checkmark to enter selection mode.
+3. Click other YouTube videos to add or remove them from the queue.
+4. Set the destination folder in the queue panel.
+5. Click `Send queue`.
+
+The extension submits each selected URL to the local service with the same destination folder. The service processes jobs sequentially, so a batch does not start multiple ffmpeg transcodes at once.
+
 ## Output Naming
 
 For each job, the service writes into the selected destination folder:
