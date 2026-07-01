@@ -1,0 +1,19 @@
+services:
+  ytdl-premiere:
+    build:
+      context: ./service
+    container_name: ytdl-premiere
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ${HOST_OUTPUT_ROOT:-./downloads}:/output-root
+    environment:
+      OUTPUT_ROOT: /output-root
+      HOST_OUTPUT_ROOT: ${HOST_OUTPUT_ROOT:-}
+      DEFAULT_OUTPUT_DIR: ${DEFAULT_OUTPUT_DIR:-}
+      WORK_DIR: /tmp/ytdl-premiere-work
+      CRF: ${CRF:-18}
+      PRESET: ${PRESET:-medium}
+      AUDIO_BITRATE: ${AUDIO_BITRATE:-192k}
+      TARGET_FPS: ${TARGET_FPS:-}

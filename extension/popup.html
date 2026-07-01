@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>YTDL Premiere</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>YTDL Premiere</h1>
+        <span id="serviceState" class="state">Checking</span>
+      </header>
+
+      <label for="urlInput">URL</label>
+      <textarea id="urlInput" rows="3" spellcheck="false"></textarea>
+
+      <label for="outputInput">Destination folder</label>
+      <input id="outputInput" type="text" spellcheck="false" placeholder="X:\Projects\ClientOrShow\incoming">
+
+      <button id="submitButton" type="button">Download + Transcode</button>
+
+      <section id="jobPanel" class="panel" hidden>
+        <div class="row">
+          <span>Status</span>
+          <strong id="jobStatus">Queued</strong>
+        </div>
+        <div class="row">
+          <span>Step</span>
+          <strong id="jobStep">Queued</strong>
+        </div>
+        <p id="jobOutput"></p>
+      </section>
+
+      <p id="message" class="message"></p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
