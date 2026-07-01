@@ -72,7 +72,7 @@ When Batch mode is on:
 
 1. Hover over a YouTube video thumbnail until the checkmark appears.
 2. Click the checkmark to enter selection mode.
-3. Click additional videos to add or remove them.
+3. Use the checkmarks shown on visible videos to add or remove them.
 4. Set one destination folder in the queue panel.
 5. Click `Send queue`.
 

@@ -15,6 +15,9 @@
   let hoverButton = null;
   let selectionMode = false;
   let selectedVideos = new Map();
+  let selectionBadges = new Map();
+  let badgeRefreshFrame = null;
+  let badgeObserver = null;
   let panel = null;
 
   function normalizeYouTubeUrl(rawUrl) {
@@ -96,6 +99,49 @@
         "ytd-thumbnail, ytd-rich-grid-media, ytd-video-renderer, ytd-compact-video-renderer, ytd-grid-video-renderer"
       ) || anchor
     );
+  }
+
+  function visibleRectForElement(element) {
+    if (!element?.isConnected) return null;
+
+    const rect = element.getBoundingClientRect();
+    if (
+      rect.width < 24 ||
+      rect.height < 24 ||
+      rect.bottom <= 0 ||
+      rect.right <= 0 ||
+      rect.top >= window.innerHeight ||
+      rect.left >= window.innerWidth
+    ) {
+      return null;
+    }
+
+    return rect;
+  }
+
+  function currentVideoTargets() {
+    const seen = new Set();
+    const targets = [];
+
+    document.querySelectorAll(VIDEO_LINK_SELECTOR).forEach((anchor) => {
+      const url = normalizeYouTubeUrl(anchor.href);
+      if (!url || seen.has(url)) return;
+
+      const element = visualTargetForAnchor(anchor);
+      const rect = visibleRectForElement(element);
+      if (!rect) return;
+
+      seen.add(url);
+      targets.push({
+        anchor,
+        element,
+        rect,
+        url,
+        title: titleFromAnchor(anchor)
+      });
+    });
+
+    return targets;
   }
 
   function clearHoverTimer() {
@@ -203,6 +249,20 @@
     renderPanel();
   }
 
+  function toggleVideoTarget(target) {
+    if (selectedVideos.has(target.url)) {
+      selectedVideos.delete(target.url);
+    } else {
+      selectedVideos.set(target.url, {
+        url: target.url,
+        title: target.title
+      });
+    }
+
+    renderSelectionMarks();
+    renderPanel();
+  }
+
   function renderSelectionMarks() {
     document.querySelectorAll(".ytdp-selected-video").forEach((node) => {
       node.classList.remove("ytdp-selected-video");
@@ -213,6 +273,80 @@
       if (!url || !selectedVideos.has(url)) return;
       visualTargetForAnchor(anchor).classList.add("ytdp-selected-video");
     });
+
+    renderSelectionBadges();
+  }
+
+  function removeSelectionBadges() {
+    selectionBadges.forEach((button) => button.remove());
+    selectionBadges.clear();
+  }
+
+  function renderSelectionBadges() {
+    if (!selectionMode) {
+      removeSelectionBadges();
+      return;
+    }
+
+    const targets = currentVideoTargets();
+    const activeUrls = new Set(targets.map((target) => target.url));
+
+    selectionBadges.forEach((button, url) => {
+      if (!activeUrls.has(url)) {
+        button.remove();
+        selectionBadges.delete(url);
+      }
+    });
+
+    targets.forEach((target) => {
+      let button = selectionBadges.get(target.url);
+      const selected = selectedVideos.has(target.url);
+
+      if (!button) {
+        button = document.createElement("button");
+        button.type = "button";
+        button.className = "ytdp-select-badge";
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          toggleVideoTarget(target);
+        });
+        selectionBadges.set(target.url, button);
+        document.documentElement.appendChild(button);
+      }
+
+      button.classList.toggle("selected", selected);
+      button.textContent = selected ? "\u2713" : "";
+      button.title = selected ? "Remove from YTDL Premiere queue" : "Add to YTDL Premiere queue";
+      button.setAttribute("aria-label", button.title);
+      button.style.top = `${Math.max(8, target.rect.top + 8)}px`;
+      button.style.left = `${Math.max(8, target.rect.right - 42)}px`;
+    });
+  }
+
+  function scheduleSelectionBadgeRefresh() {
+    if (!selectionMode || badgeRefreshFrame) return;
+
+    badgeRefreshFrame = requestAnimationFrame(() => {
+      badgeRefreshFrame = null;
+      renderSelectionBadges();
+    });
+  }
+
+  function startBadgeObserver() {
+    if (badgeObserver) return;
+
+    badgeObserver = new MutationObserver(scheduleSelectionBadgeRefresh);
+    badgeObserver.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  function stopBadgeObserver() {
+    badgeObserver?.disconnect();
+    badgeObserver = null;
   }
 
   async function getSavedOutputDir() {
@@ -310,6 +444,7 @@
     ensurePanel();
     renderSelectionMarks();
     renderPanel();
+    startBadgeObserver();
   }
 
   function exitSelectionMode() {
@@ -318,6 +453,8 @@
     panel?.remove();
     panel = null;
     document.documentElement.classList.remove("ytdp-selection-mode");
+    stopBadgeObserver();
+    removeSelectionBadges();
     renderSelectionMarks();
   }
 
@@ -393,8 +530,14 @@
     }
   });
 
-  window.addEventListener("scroll", positionHoverButton, true);
-  window.addEventListener("resize", positionHoverButton);
+  window.addEventListener("scroll", () => {
+    positionHoverButton();
+    scheduleSelectionBadgeRefresh();
+  }, true);
+  window.addEventListener("resize", () => {
+    positionHoverButton();
+    scheduleSelectionBadgeRefresh();
+  });
   document.addEventListener("pointermove", onPointerMove, true);
   document.addEventListener("pointerleave", removeHoverButton, true);
   document.addEventListener("click", onDocumentClick, true);
