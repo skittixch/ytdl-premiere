@@ -10,6 +10,7 @@
 
   let batchModeEnabled = false;
   let hoverTimer = null;
+  let hoverRemoveTimer = null;
   let pendingAnchor = null;
   let hoverTarget = null;
   let hoverButton = null;
@@ -151,12 +152,35 @@
     }
   }
 
+  function clearHoverRemoveTimer() {
+    if (hoverRemoveTimer) {
+      clearTimeout(hoverRemoveTimer);
+      hoverRemoveTimer = null;
+    }
+  }
+
   function removeHoverButton() {
     clearHoverTimer();
+    clearHoverRemoveTimer();
     pendingAnchor = null;
     hoverTarget = null;
     hoverButton?.remove();
     hoverButton = null;
+  }
+
+  function scheduleHoverButtonRemoval(delay = 350) {
+    if (!hoverButton) return;
+
+    clearHoverRemoveTimer();
+    hoverRemoveTimer = setTimeout(() => {
+      hoverRemoveTimer = null;
+      const stillHoveringButton = hoverButton?.matches(":hover");
+      const stillHoveringTarget =
+        hoverTarget?.element?.matches(":hover") || hoverTarget?.anchor?.matches(":hover");
+
+      if (stillHoveringButton || stillHoveringTarget) return;
+      removeHoverButton();
+    }, delay);
   }
 
   function positionHoverButton() {
@@ -171,6 +195,7 @@
     const url = normalizeYouTubeUrl(anchor.href);
     if (!url || !batchModeEnabled || selectionMode) return;
 
+    clearHoverRemoveTimer();
     hoverTarget = {
       anchor,
       url,
@@ -189,6 +214,8 @@
       event.stopPropagation();
       enterSelectionMode(hoverTarget);
     });
+    hoverButton.addEventListener("pointerenter", clearHoverRemoveTimer);
+    hoverButton.addEventListener("pointerleave", () => scheduleHoverButtonRemoval());
 
     document.documentElement.appendChild(hoverButton);
     positionHoverButton();
@@ -221,14 +248,20 @@
 
   function onPointerMove(event) {
     if (!batchModeEnabled || selectionMode) return;
-    if (hoverButton?.contains(event.target)) return;
-
-    const anchor = videoAnchorFromEvent(event);
-    if (!anchor) {
-      removeHoverButton();
+    if (hoverButton?.contains(event.target)) {
+      clearHoverRemoveTimer();
       return;
     }
 
+    const anchor = videoAnchorFromEvent(event);
+    if (!anchor) {
+      clearHoverTimer();
+      pendingAnchor = null;
+      scheduleHoverButtonRemoval();
+      return;
+    }
+
+    clearHoverRemoveTimer();
     scheduleHover(anchor);
   }
 
@@ -248,7 +281,7 @@
       containsNode(hoverTarget.element, event.relatedTarget);
     if (enteredHoverSurface) return;
 
-    removeHoverButton();
+    scheduleHoverButtonRemoval();
   }
 
   function toggleVideo(anchor) {
