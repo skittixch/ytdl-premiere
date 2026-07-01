@@ -1,11 +1,17 @@
 {
   "manifest_version": 3,
   "name": "YTDL Premiere",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Send video URLs to a local yt-dlp + ffmpeg Premiere pipeline with queue progress.",
   "permissions": ["activeTab", "alarms", "scripting", "storage", "tabs"],
   "optional_permissions": ["notifications"],
   "host_permissions": ["http://127.0.0.1:8787/*", "http://localhost:8787/*"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "background": {
     "service_worker": "background.js"
   },
@@ -18,6 +24,10 @@
     }
   ],
   "action": {
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    },
     "default_popup": "popup.html",
     "default_title": "Download for Premiere"
   }
