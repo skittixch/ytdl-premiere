@@ -8,7 +8,7 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Callable, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,6 +43,9 @@ class JobResponse(BaseModel):
     url: str
     created_at: str
     updated_at: str
+    progress: float = 0
+    title: str | None = None
+    browser_title: str | None = None
     source_path: str | None = None
     premiere_path: str | None = None
     output_dir: str | None = None
@@ -91,6 +94,31 @@ def run_command(args: list[str], cwd: Path | None = None) -> subprocess.Complete
         stderr=subprocess.PIPE,
         check=False,
     )
+
+
+def run_streamed_command(
+    args: list[str],
+    cwd: Path | None = None,
+    on_output: Callable[[str], None] | None = None,
+) -> subprocess.CompletedProcess:
+    process = subprocess.Popen(
+        args,
+        cwd=str(cwd) if cwd else None,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    output_lines: list[str] = []
+
+    assert process.stdout is not None
+    for line in process.stdout:
+        output_lines.append(line)
+        if on_output:
+            on_output(line)
+
+    returncode = process.wait()
+    output = "".join(output_lines)
+    return subprocess.CompletedProcess(args, returncode, stdout=output, stderr="")
 
 
 def sanitize_filename(value: str, fallback: str) -> str:
@@ -201,14 +229,24 @@ def find_downloaded_media(job_dir: Path) -> Path:
 
 
 def download_source(job_id: str, url: str, job_dir: Path) -> tuple[Path, str, str]:
-    update_job(job_id, status="running", step="reading metadata")
+    update_job(job_id, status="running", step="reading metadata", progress=3)
     title, video_id = probe_metadata(url)
+    update_job(job_id, title=title)
 
-    update_job(job_id, step="downloading highest available source")
-    completed = run_command(
+    def on_download_output(line: str) -> None:
+        percent_match = re.search(r"\[download\]\s+([0-9]+(?:\.[0-9]+)?)%", line)
+        if not percent_match:
+            return
+
+        percent = min(100.0, float(percent_match.group(1)))
+        update_job(job_id, progress=round(10 + (percent * 0.5), 1))
+
+    update_job(job_id, step="downloading highest available source", progress=10)
+    completed = run_streamed_command(
         [
             "yt-dlp",
             "--no-playlist",
+            "--newline",
             "-f",
             "bv*+ba/b",
             "--merge-output-format",
@@ -216,13 +254,38 @@ def download_source(job_id: str, url: str, job_dir: Path) -> tuple[Path, str, st
             "-o",
             str(job_dir / "source.%(ext)s"),
             url,
-        ]
+        ],
+        on_output=on_download_output,
     )
     if completed.returncode != 0:
-        raise RuntimeError(completed.stderr.strip() or "yt-dlp download failed")
+        raise RuntimeError(completed.stdout.strip() or "yt-dlp download failed")
 
     source = find_downloaded_media(job_dir)
     return source, title, video_id
+
+
+def ffprobe_duration(source_path: Path) -> float | None:
+    completed = run_command(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(source_path),
+        ]
+    )
+    if completed.returncode != 0:
+        return None
+
+    try:
+        duration = float(completed.stdout.strip())
+    except ValueError:
+        return None
+
+    return duration if duration > 0 else None
 
 
 def ffmpeg_args(source_path: Path, temp_output: Path) -> list[str]:
@@ -230,8 +293,11 @@ def ffmpeg_args(source_path: Path, temp_output: Path) -> list[str]:
         "ffmpeg",
         "-nostdin",
         "-hide_banner",
+        "-nostats",
         "-loglevel",
         "error",
+        "-progress",
+        "pipe:1",
         "-y",
         "-i",
         str(source_path),
@@ -271,14 +337,29 @@ def ffmpeg_args(source_path: Path, temp_output: Path) -> list[str]:
 
 
 def transcode_for_premiere(job_id: str, source_path: Path, premiere_path: Path) -> None:
-    update_job(job_id, step="transcoding for Premiere")
+    update_job(job_id, step="transcoding for Premiere", progress=65)
     temp_output = premiere_path.with_suffix(".tmp.mp4")
     temp_output.unlink(missing_ok=True)
+    duration = ffprobe_duration(source_path)
 
-    completed = run_command(ffmpeg_args(source_path, temp_output))
+    def on_ffmpeg_output(line: str) -> None:
+        if not duration:
+            return
+
+        if line.startswith("out_time_ms=") or line.startswith("out_time_us="):
+            _, value = line.strip().split("=", 1)
+            try:
+                seconds = float(value) / 1_000_000
+            except ValueError:
+                return
+
+            percent = min(1.0, max(0.0, seconds / duration))
+            update_job(job_id, progress=round(65 + (percent * 34), 1))
+
+    completed = run_streamed_command(ffmpeg_args(source_path, temp_output), on_output=on_ffmpeg_output)
     if completed.returncode != 0:
         temp_output.unlink(missing_ok=True)
-        raise RuntimeError(completed.stderr.strip() or "ffmpeg transcode failed")
+        raise RuntimeError(completed.stdout.strip() or "ffmpeg transcode failed")
 
     temp_output.replace(premiere_path)
 
@@ -293,22 +374,23 @@ def process_job(job_id: str) -> None:
     try:
         output_dir, output_display_dir = map_requested_output_dir(requested_output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        update_job(job_id, output_dir=output_display_dir)
+        update_job(job_id, output_dir=output_display_dir, progress=1)
 
         source_temp, title, video_id = download_source(job_id, url, job_dir)
         base_name = sanitize_filename(f"{title} [{video_id}]", f"download-{job_id}")
         source_path = unique_path(output_dir / f"{base_name}{source_temp.suffix.lower()}")
         premiere_path = unique_path(output_dir / f"{base_name}_premiere.mp4")
 
-        update_job(job_id, step="moving source into output folder")
+        update_job(job_id, step="moving source into output folder", progress=61)
         shutil.move(str(source_temp), source_path)
-        update_job(job_id, source_path=display_path(source_path))
+        update_job(job_id, source_path=display_path(source_path), progress=63)
 
         transcode_for_premiere(job_id, source_path, premiere_path)
         update_job(
             job_id,
             status="done",
             step="complete",
+            progress=100,
             source_path=display_path(source_path),
             premiere_path=display_path(premiere_path),
         )
@@ -353,6 +435,8 @@ def create_job(request: CreateJobRequest) -> JobResponse:
         "requested_output_dir": request.output_dir,
         "created_at": now_iso(),
         "updated_at": now_iso(),
+        "progress": 0,
+        "title": None,
         "source_path": None,
         "premiere_path": None,
         "output_dir": None,

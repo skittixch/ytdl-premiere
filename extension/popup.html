@@ -15,22 +15,24 @@
 
       <label for="urlInput">URL</label>
       <textarea id="urlInput" rows="3" spellcheck="false"></textarea>
+      <p id="urlHint" class="hint"></p>
 
       <label for="outputInput">Destination folder</label>
       <input id="outputInput" type="text" spellcheck="false" placeholder="X:\Projects\ClientOrShow\incoming">
 
+      <label class="check">
+        <input id="notifyInput" type="checkbox">
+        Notify when jobs finish
+      </label>
+
       <button id="submitButton" type="button">Download + Transcode</button>
 
-      <section id="jobPanel" class="panel" hidden>
-        <div class="row">
-          <span>Status</span>
-          <strong id="jobStatus">Queued</strong>
+      <section id="queuePanel" class="panel">
+        <div class="panelHeader">
+          <strong>Queue</strong>
+          <span>Latest jobs</span>
         </div>
-        <div class="row">
-          <span>Step</span>
-          <strong id="jobStep">Queued</strong>
-        </div>
-        <p id="jobOutput"></p>
+        <div id="jobList" class="jobList"></div>
       </section>
 
       <p id="message" class="message"></p>

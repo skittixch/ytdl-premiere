@@ -1,21 +1,14 @@
 {
   "manifest_version": 3,
   "name": "YTDL Premiere",
-  "version": "0.2.0",
-  "description": "Send current tabs or selected YouTube videos to a local yt-dlp + ffmpeg Premiere pipeline.",
-  "permissions": ["activeTab", "tabs", "storage"],
+  "version": "0.3.0",
+  "description": "Send video URLs to a local yt-dlp + ffmpeg Premiere pipeline with queue progress.",
+  "permissions": ["activeTab", "alarms", "scripting", "storage", "tabs"],
+  "optional_permissions": ["notifications"],
   "host_permissions": ["http://127.0.0.1:8787/*", "http://localhost:8787/*"],
   "background": {
     "service_worker": "background.js"
   },
-  "content_scripts": [
-    {
-      "matches": ["*://*.youtube.com/*"],
-      "js": ["youtube-select.js"],
-      "css": ["youtube-select.css"],
-      "run_at": "document_idle"
-    }
-  ],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Download for Premiere"

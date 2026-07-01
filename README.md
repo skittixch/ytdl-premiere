@@ -54,17 +54,15 @@ Click the extension on a video page, then click `Download + Transcode`.
 
 Set `Destination folder` in the popup to the project folder where the source and Premiere copy should land. The extension remembers the last value.
 
-## YouTube Multi-Select
+If the active tab is a Google results page or another page with visible YouTube links, the popup tries to detect the first usable YouTube video URL instead of submitting the Google page URL. If it cannot detect one, paste the YouTube video URL into the popup.
 
-On YouTube pages:
+## Queue, Progress, And Notifications
 
-1. Hover over a video thumbnail long enough for the checkmark to appear.
-2. Click the checkmark to enter selection mode.
-3. Click other YouTube videos to add or remove them from the queue.
-4. Set the destination folder in the queue panel.
-5. Click `Send queue`.
+The popup shows recent jobs from the local service with progress bars for the queue, download, and transcode phases.
 
-The extension submits each selected URL to the local service with the same destination folder. The service processes jobs sequentially, so a batch does not start multiple ffmpeg transcodes at once.
+Enable `Notify when jobs finish` in the popup to allow desktop notifications when watched jobs complete or fail. Chrome may ask for notification permission the first time you enable it.
+
+The service processes jobs sequentially, so multiple submitted jobs do not start multiple ffmpeg transcodes at once.
 
 ## Output Naming
 
